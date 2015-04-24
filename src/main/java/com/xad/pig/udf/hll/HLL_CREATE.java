@@ -31,7 +31,7 @@ public class HLL_CREATE extends HyperLogLogUdfBase<String> {
 
     @Override
     public String exec(Tuple tuple) throws IOException {
-        byte[] bytes = hllFromValues(tuple).toBytes();
+        byte[] bytes = hllFromValues(tuple, hllConfig).toBytes();
         return NumberUtil.toHex(bytes, 0, bytes.length);
     }
 }

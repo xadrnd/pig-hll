@@ -28,6 +28,6 @@ public class HLL_COMPUTE extends HyperLogLogUdfBase<Long> {
 
     @Override
     public Long exec(Tuple tuple) throws IOException {
-        return hllFromValues(tuple).cardinality();
+        return hllFromValues(tuple, hllConfig).cardinality();
     }
 }

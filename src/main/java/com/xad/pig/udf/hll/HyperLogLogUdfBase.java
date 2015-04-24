@@ -4,7 +4,6 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import net.agkn.hll.HLL;
-import net.agkn.hll.HLLType;
 import net.agkn.hll.util.NumberUtil;
 import org.apache.pig.Algebraic;
 import org.apache.pig.EvalFunc;
@@ -31,44 +30,25 @@ public abstract class HyperLogLogUdfBase<TReturnType>
     static final HashFunction hash = Hashing.murmur3_128(seed);
     static final Hasher hasher = hash.newHasher();
 
-    private static final int DEFAULT_LOG2M = 10;
-    private static final int DEFAULT_REGWIDTH = 5;
-    private static final int DEFAULT_EXPTHRESH = 11;
-    private static final boolean DEFAULT_SPARESON = true;
-    private static final HLLType DEFAULT_TYPE = HLLType.EMPTY;
 
-    static int log2m = DEFAULT_LOG2M;
-    static int regwidth = DEFAULT_REGWIDTH;
-    static int expthresh = DEFAULT_EXPTHRESH;
-    static boolean sparseon = DEFAULT_SPARESON;
-    static HLLType type = DEFAULT_TYPE;
+    protected HLLConfig hllConfig;
 
     // Default constructor
-    public HyperLogLogUdfBase() {}
+    public HyperLogLogUdfBase() { this.hllConfig = new HLLConfig();}
 
     public HyperLogLogUdfBase(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {
-        HyperLogLogUdfBase.log2m = log2m;
-        HyperLogLogUdfBase.regwidth = regwidth;
-        HyperLogLogUdfBase.expthresh = expthresh;
-        HyperLogLogUdfBase.sparseon = sparseon;
-
+        this.hllConfig = new HLLConfig(log2m, regwidth, expthresh, sparseon);
     }
 
     public HyperLogLogUdfBase(String[] args) {
-        this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.getBoolean(args[3]));
+        this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.parseBoolean(args[3]));
     }
 
     static public class InitialScalar extends EvalFunc<Tuple> {
         public InitialScalar(){}
-        public InitialScalar(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {
-            HyperLogLogUdfBase.log2m = log2m;
-            HyperLogLogUdfBase.regwidth = regwidth;
-            HyperLogLogUdfBase.expthresh = expthresh;
-            HyperLogLogUdfBase.sparseon = sparseon;
-
-        }
+        public InitialScalar(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {}
         public InitialScalar(String[] args) {
-            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.getBoolean(args[3]));
+            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.parseBoolean(args[3]));
         }
 
         public Tuple exec(Tuple input) throws IOException {
@@ -77,6 +57,11 @@ public abstract class HyperLogLogUdfBase<TReturnType>
     }
 
     static public class InitialHLL extends EvalFunc<Tuple> {
+        public InitialHLL(){}
+        public InitialHLL(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {}
+        public InitialHLL(String[] args) {
+            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.parseBoolean(args[3]));
+        }
         public Tuple exec(Tuple input) throws IOException {
             return tupleFromSingleValue(input, HLL_VALUE);
         }
@@ -85,20 +70,19 @@ public abstract class HyperLogLogUdfBase<TReturnType>
     public String getIntermed() {return Intermed.class.getName();}
 
     static public class Intermed extends EvalFunc<Tuple> {
-        public Intermed(){}
+        HLLConfig hllConfig;
+        // Default constructor
+        public Intermed() { this.hllConfig = new HLLConfig();}
+
         public Intermed(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {
-            HyperLogLogUdfBase.log2m = log2m;
-            HyperLogLogUdfBase.regwidth = regwidth;
-            HyperLogLogUdfBase.expthresh = expthresh;
-            HyperLogLogUdfBase.sparseon = sparseon;
-
+            this.hllConfig = new HLLConfig(log2m, regwidth, expthresh, sparseon);
         }
+
         public Intermed(String[] args) {
-            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.getBoolean(args[3]));
+            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.parseBoolean(args[3]));
         }
-
         public Tuple exec(Tuple input) throws IOException {
-            byte[] bytes = hllFromTuples(input).toBytes();
+            byte[] bytes = hllFromTuples(input, hllConfig).toBytes();
             return TupleFactory.getInstance().newTuple(Arrays.asList(HLL_VALUE, NumberUtil.toHex(bytes, 0, bytes.length)));
         }
 
@@ -106,36 +90,36 @@ public abstract class HyperLogLogUdfBase<TReturnType>
 
 
     static public class FinalEstimate extends EvalFunc<Long> {
-        public FinalEstimate(){}
-        public FinalEstimate(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {
-            HyperLogLogUdfBase.log2m = log2m;
-            HyperLogLogUdfBase.regwidth = regwidth;
-            HyperLogLogUdfBase.expthresh = expthresh;
-            HyperLogLogUdfBase.sparseon = sparseon;
+        HLLConfig hllConfig;
+        // Default constructor
+        public FinalEstimate() { this.hllConfig = new HLLConfig();}
 
+        public FinalEstimate(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {
+            this.hllConfig = new HLLConfig(log2m, regwidth, expthresh, sparseon);
         }
+
         public FinalEstimate(String[] args) {
-            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.getBoolean(args[3]));
+            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.parseBoolean(args[3]));
         }
         public Long exec(Tuple input) throws IOException {
-            return (long) hllFromTuples(input).cardinality();
+            return (long) hllFromTuples(input, hllConfig).cardinality();
         }
     }
 
     static public class FinalHll extends EvalFunc<String> {
-        public FinalHll(){}
-        public FinalHll(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {
-            HyperLogLogUdfBase.log2m = log2m;
-            HyperLogLogUdfBase.regwidth = regwidth;
-            HyperLogLogUdfBase.expthresh = expthresh;
-            HyperLogLogUdfBase.sparseon = sparseon;
+        HLLConfig hllConfig;
+        // Default constructor
+        public FinalHll() { this.hllConfig = new HLLConfig();}
 
+        public FinalHll(Integer log2m, Integer regwidth, Integer expthresh, boolean sparseon) {
+            this.hllConfig = new HLLConfig(log2m, regwidth, expthresh, sparseon);
         }
+
         public FinalHll(String[] args) {
-            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.getBoolean(args[3]));
+            this(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]), Boolean.parseBoolean(args[3]));
         }
         public String exec(Tuple input) throws IOException {
-            byte[] bytes = hllFromTuples(input).toBytes();
+            byte[] bytes = hllFromTuples(input, hllConfig).toBytes();
             return NumberUtil.toHex(bytes, 0, bytes.length);
         }
     }
@@ -164,7 +148,7 @@ public abstract class HyperLogLogUdfBase<TReturnType>
         return null;
     }
 
-    protected static HLL hllFromTuples(Tuple input) throws ExecException {
+    protected static HLL hllFromTuples(Tuple input, HLLConfig hllConfig) throws ExecException {
         HLL hll = null;
         Object values = input.get(0);
 
@@ -180,7 +164,7 @@ public abstract class HyperLogLogUdfBase<TReturnType>
                 String valueStr = value.get(1).toString();
                 if (valueType.equals(SCALAR_VALUE)) {
                     if (hll == null)
-                        hll =  new HLL(log2m, regwidth, expthresh, sparseon, type);
+                        hll =  new HLL(hllConfig.getLog2m(), hllConfig.getRegwidth(), hllConfig.getExpthresh(), hllConfig.isSparseon(), hllConfig.getType());
                     hll.addRaw(hash.hashString(valueStr, Charset.defaultCharset()).asLong());
 
                 } else {
@@ -212,11 +196,11 @@ public abstract class HyperLogLogUdfBase<TReturnType>
     }
 
 
-    protected static HLL hllFromValues(Tuple input) throws ExecException {
+    protected static HLL hllFromValues(Tuple input, final HLLConfig hllConfig) throws ExecException {
         return iterateInput(input, new InputAction() {
             public HLL call(HLL current, String item) {
                 if (current == null)
-                    current = new HLL(log2m, regwidth, expthresh, sparseon, type);
+                    current = new HLL(hllConfig.getLog2m(), hllConfig.getRegwidth(), hllConfig.getExpthresh(), hllConfig.isSparseon(), hllConfig.getType());
                 current.addRaw(hash.hashString(item, Charset.defaultCharset()).asLong());
                 return current;
             }
