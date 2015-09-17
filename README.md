@@ -1,7 +1,8 @@
 # pig-hll
 Pig Hyperloglog UDFs
 
-This project implements a PIG wrapper around Aggregate Knowledge's awesome Java HLL implementation. (https://github.com/aggregateknowledge/java-hll)
+This project implements PIG UDF's around Aggregate Knowledge's awesome Java HLL implementation:      
+* https://github.com/aggregateknowledge/java-hll
 
 The UDF's can be used to produce *HLL strings* which can then be imported into Postgres for further analysis
 
