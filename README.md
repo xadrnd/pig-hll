@@ -3,22 +3,27 @@ Pig Hyperloglog UDFs
 
 This project implements a PIG wrapper around Aggregate Knowledge's awesome Java HLL implementation. (https://github.com/aggregateknowledge/java-hll)
 
-The HLL outputs can be imported into Postgres for further analysis. (https://github.com/aggregateknowledge/postgresql-hll)
+The UDF's can be used to produce *HLL strings* which can then be imported into Postgres for further analysis
 
-For analysis of HLLs in MySql, (https://github.com/amirtuval/pig-hyperloglog) can be used.
+See:
+* https://github.com/aggregateknowledge/postgresql-hll
+* https://github.com/aggregateknowledge/hll-storage-spec
 
-Usage
-Register the xad-pig_hll-1.0.jar in your PIG.
+
+
+Usage:
+
+Register the xad-pig_hll-1.0.jar in your PIG script.
 
 The following UDFs are provided:
 
-* HLL_CREATE - Given a list of values, this function will return the HLL string computed from these values.
-* HLL_COMPUTE - Given a list of values, this function will return an integer representing the estimated distinct count of these values.
-* HLL_MERGE - Given a list of HLL strings, this function will return the HLL string that is the combination of all the hll strings.
-* HLL_MERGE_COMPUTE - Given a list of HLL strings, this function will return an integer representing the estimated distinct count of these values.
+UDF   |Description
+------|---------------------------------------
+HLL_CREATE|Given a *list of values*, create/return the *HLL string* representation of the set
+HLL_COMPUTE|Given a *list of values*, compute/return the *estimated cardinality* of the set
+HLL_MERGE|Merge a list of *HLL strings* into a single merged *HLL string* representation of the set
+HLL_MERGE_COMPUTE|Merge a list of *HLL strings* and compute/return the *estimated cardinality* of the set
 
-Each HLL string is store in Hex form. Further details for tuning/optimization can be found in Aggregate Knowledge's page.
-https://github.com/aggregateknowledge/java-hll
 
 Compilation:
 ```
